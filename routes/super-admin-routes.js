@@ -13,6 +13,9 @@ const { isSuperAdmin } = require('../middleware/auth')
 const router = express.Router()
 
 router.post('/register', async (req, res) => {
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(403).json({ message: 'Super admin creation only allowed in development environment' })
+  }
   try {
     const result = await registerSuperAdmin(req.body, res)
     res.status(201).json(result)
@@ -82,6 +85,11 @@ router.delete("/delete-product/:productId", isSuperAdmin, async (req, res) => {
   } catch (error) {
     res.status(400).json({ message: error.message })
   }
+})
+
+router.get("/logout", isSuperAdmin, (req, res) => {
+  res.clearCookie('token')
+  res.status(200).json({ message: 'Logged out successfully' })
 })
 
 module.exports = router
