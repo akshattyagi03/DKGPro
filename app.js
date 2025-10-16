@@ -1,0 +1,19 @@
+require("dotenv").config()
+const express=require("express")
+const mongoose=require("mongoose")
+const cookieParser=require("cookie-parser")
+const app=express()
+const userRoutes=require("./routes/user-routes")
+const adminRoutes=require("./routes/admin-routes")
+mongoose.connect(process.env.MONGODB_URI)
+.then(() => console.log('Connected to MongoDB'))
+.catch(err => console.error('MongoDB connection error:', err))
+app.use(express.json())
+app.use(cookieParser())
+
+app.get("/", (req, res)=>{
+    res.send("Hey, it's working")
+})
+app.use("/users", userRoutes)
+app.use("/admins", adminRoutes)
+module.exports=app
