@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+const mongoose = require('mongoose')
 
 const productSchema = new mongoose.Schema({
   name: {
@@ -15,10 +15,20 @@ const productSchema = new mongoose.Schema({
     required: [true, 'Product price is required'],
     min: [0, 'Price cannot be negative']
   },
-  category: {
+  mainCategory: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'MainCategory',
+    required: [true, 'Main category is required']
+  },
+  subCategory: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'SubCategory',
+    required: [true, 'Sub category is required']
+  },
+  thirdCategory: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'ThirdCategory',
-    required: [true, 'Product category is required']
+    required: [true, 'Third category is required']
   },
   images: [{
     type: String
@@ -28,12 +38,19 @@ const productSchema = new mongoose.Schema({
     ref: 'Admin',
     required: true
   },
-  serviceableDistricts: [{
-    type: String,
-    trim: true
+  serviceableAreas: [{
+    city: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    districts: [{
+      type: String,
+      trim: true
+    }]
   }]
 }, {
   timestamps: true
-});
+})
 
-module.exports = mongoose.model('Product', productSchema);
+module.exports = mongoose.model('Product', productSchema)

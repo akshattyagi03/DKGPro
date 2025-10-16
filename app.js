@@ -5,6 +5,7 @@ const cookieParser=require("cookie-parser")
 const app=express()
 const userRoutes=require("./routes/user-routes")
 const adminRoutes=require("./routes/admin-routes")
+const superAdminRoutes=require("./routes/super-admin-routes")
 mongoose.connect(process.env.MONGODB_URI)
 .then(() => console.log('Connected to MongoDB'))
 .catch(err => console.error('MongoDB connection error:', err))
@@ -16,4 +17,5 @@ app.get("/", (req, res)=>{
 })
 app.use("/users", userRoutes)
 app.use("/admins", adminRoutes)
+app.use("/superadmins", superAdminRoutes)
 module.exports=app

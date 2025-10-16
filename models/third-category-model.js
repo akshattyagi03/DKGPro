@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+const mongoose = require('mongoose')
 
 const thirdCategorySchema = new mongoose.Schema({
   name: {
@@ -17,6 +17,6 @@ const thirdCategorySchema = new mongoose.Schema({
   }
 }, {
   timestamps: true
-});
+})
 
-module.exports = mongoose.model('ThirdCategory', thirdCategorySchema);
+module.exports = mongoose.model('ThirdCategory', thirdCategorySchema)

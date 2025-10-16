@@ -1,5 +1,5 @@
-const mongoose = require('mongoose');
-const bcrypt = require('bcryptjs');
+const mongoose = require('mongoose')
+const bcrypt = require('bcryptjs')
 
 const adminSchema = new mongoose.Schema({
   fullName: {
@@ -24,6 +24,14 @@ const adminSchema = new mongoose.Schema({
     type: String,
     default: 'admin'
   },
+  isApproved: {
+    type: Boolean,
+    default: false
+  },
+  approvedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'SuperAdmin'
+  },
   products: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Product'
@@ -36,18 +44,18 @@ const adminSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   }
-});
+})
 
 adminSchema.pre('save', async function(next) {
-  if (!this.isModified('password')) return next();
-  this.password = await bcrypt.hash(this.password, 10);
-  next();
-});
+  if (!this.isModified('password')) return next()
+  this.password = await bcrypt.hash(this.password, 10)
+  next()
+})
 
 adminSchema.methods.comparePassword = async function(password) {
-  return await bcrypt.compare(password, this.password);
-};
+  return await bcrypt.compare(password, this.password)
+}
 
-const Admin = mongoose.model('Admin', adminSchema);
+const Admin = mongoose.model('Admin', adminSchema)
 
-module.exports = Admin;
+module.exports = Admin
