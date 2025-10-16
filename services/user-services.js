@@ -29,4 +29,22 @@ const loginUser = async (userData, res) => {
   return { user: { id: user._id, fullName: user.fullName, email } }
 }
 
-module.exports = { registerUser, loginUser }
+const getProducts = async () => {
+  const Product = require('../models/product-model')
+  const products = await Product.find().populate('category addedBy')
+  return products
+}
+
+const checkPincode = async (pincode) => {
+  const response = await fetch(`https://api.postalpincode.in/pincode/${pincode}`)
+  const data = await response.json()
+  const district = data[0]?.PostOffice?.[0]?.District || null
+  
+  if (!district) {
+    throw new Error('District not found')
+  }
+  
+  return { district }
+}
+
+module.exports = { registerUser, loginUser, getProducts, checkPincode }

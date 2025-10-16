@@ -1,5 +1,14 @@
 const express = require('express')
-const { registerSuperAdmin, loginSuperAdmin } = require('../services/super-admin-services')
+const { 
+  registerSuperAdmin, 
+  loginSuperAdmin, 
+  getPendingAdmins, 
+  approveAdmin, 
+  rejectAdmin, 
+  getAllProducts, 
+  editProduct, 
+  deleteProduct 
+} = require('../services/super-admin-services')
 const { isSuperAdmin } = require('../middleware/auth')
 const router = express.Router()
 
@@ -23,8 +32,7 @@ router.post('/login', async (req, res) => {
 
 router.get("/pending-admins", isSuperAdmin, async (req, res) => {
   try {
-    const Admin = require('../models/admin-model')
-    const pendingAdmins = await Admin.find({ isApproved: false })
+    const pendingAdmins = await getPendingAdmins()
     res.status(200).json({ pendingAdmins })
   } catch (error) {
     res.status(400).json({ message: error.message })
@@ -33,20 +41,7 @@ router.get("/pending-admins", isSuperAdmin, async (req, res) => {
 
 router.post("/approve-admin/:adminId", isSuperAdmin, async (req, res) => {
   try {
-    const Admin = require('../models/admin-model')
-    const admin = await Admin.findByIdAndUpdate(
-      req.params.adminId,
-      { 
-        isApproved: true,
-        approvedBy: req.superAdmin._id
-      },
-      { new: true }
-    )
-    
-    if (!admin) {
-      return res.status(404).json({ message: 'Admin not found' })
-    }
-    
+    const admin = await approveAdmin(req.params.adminId, req.superAdmin._id)
     res.status(200).json({ message: 'Admin approved successfully', admin })
   } catch (error) {
     res.status(400).json({ message: error.message })
@@ -55,13 +50,7 @@ router.post("/approve-admin/:adminId", isSuperAdmin, async (req, res) => {
 
 router.post("/reject-admin/:adminId", isSuperAdmin, async (req, res) => {
   try {
-    const Admin = require('../models/admin-model')
-    const admin = await Admin.findByIdAndDelete(req.params.adminId)
-    
-    if (!admin) {
-      return res.status(404).json({ message: 'Admin not found' })
-    }
-    
+    await rejectAdmin(req.params.adminId)
     res.status(200).json({ message: 'Admin registration rejected and removed' })
   } catch (error) {
     res.status(400).json({ message: error.message })
@@ -70,12 +59,7 @@ router.post("/reject-admin/:adminId", isSuperAdmin, async (req, res) => {
 
 router.get("/products", isSuperAdmin, async (req, res) => {
   try {
-    const Product = require('../models/product-model')
-    const products = await Product.find()
-      .populate('mainCategory')
-      .populate('subCategory')
-      .populate('thirdCategory')
-      .populate('addedBy')
+    const products = await getAllProducts()
     res.status(200).json({ products })
   } catch (error) {
     res.status(400).json({ message: error.message })
@@ -84,17 +68,7 @@ router.get("/products", isSuperAdmin, async (req, res) => {
 
 router.put("/edit-product/:productId", isSuperAdmin, async (req, res) => {
   try {
-    const Product = require('../models/product-model')
-    const product = await Product.findByIdAndUpdate(
-      req.params.productId,
-      req.body,
-      { new: true }
-    )
-    
-    if (!product) {
-      return res.status(404).json({ message: 'Product not found' })
-    }
-    
+    const product = await editProduct(req.params.productId, req.body)
     res.status(200).json({ message: 'Product updated successfully', product })
   } catch (error) {
     res.status(400).json({ message: error.message })
@@ -103,13 +77,7 @@ router.put("/edit-product/:productId", isSuperAdmin, async (req, res) => {
 
 router.delete("/delete-product/:productId", isSuperAdmin, async (req, res) => {
   try {
-    const Product = require('../models/product-model')
-    const product = await Product.findByIdAndDelete(req.params.productId)
-    
-    if (!product) {
-      return res.status(404).json({ message: 'Product not found' })
-    }
-    
+    await deleteProduct(req.params.productId)
     res.status(200).json({ message: 'Product deleted successfully' })
   } catch (error) {
     res.status(400).json({ message: error.message })
