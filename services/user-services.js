@@ -1,5 +1,25 @@
 const User = require('../models/user-model')
+const RefreshToken = require('../models/refresh-token-model')
 const jwt = require('jsonwebtoken')
+
+const generateTokens = async (userId) => {
+  const accessToken = jwt.sign(
+    { userId },
+    process.env.JWT_SECRET_KEY,
+    { expiresIn: '15m' }
+  )
+  
+  const refreshTokenValue = require('crypto').randomBytes(64).toString('hex')
+  const refreshToken = new RefreshToken({
+    token: refreshTokenValue,
+    userId,
+    userType: 'User',
+    expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
+  })
+  
+  await refreshToken.save()
+  return { accessToken, refreshToken: refreshTokenValue }
+}
 
 const registerUser = async (userData, res) => {
   const { fullName, email, password, phoneNumber } = userData
@@ -12,8 +32,11 @@ const registerUser = async (userData, res) => {
   const user = new User({ fullName, email, password, phoneNumber })
   await user.save()
 
-  const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET_KEY)
-  res.cookie('token', token, { httpOnly: true, secure: false })
+  const { accessToken, refreshToken } = await generateTokens(user._id)
+  
+  res.cookie('accessToken', accessToken, { httpOnly: true, secure: false, maxAge: 15 * 60 * 1000 })
+  res.cookie('refreshToken', refreshToken, { httpOnly: true, secure: false, maxAge: 7 * 24 * 60 * 60 * 1000 })
+  
   return { user: { id: user._id, fullName, email } }
 }
 
@@ -24,8 +47,12 @@ const loginUser = async (userData, res) => {
   if (!user || !(await user.comparePassword(password))) {
     throw new Error('Invalid credentials')
   }
-  const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET_KEY)
-  res.cookie('token', token, { httpOnly: true, secure: false })
+  
+  const { accessToken, refreshToken } = await generateTokens(user._id)
+  
+  res.cookie('accessToken', accessToken, { httpOnly: true, secure: false, maxAge: 15 * 60 * 1000 })
+  res.cookie('refreshToken', refreshToken, { httpOnly: true, secure: false, maxAge: 7 * 24 * 60 * 60 * 1000 })
+  
   return { user: { id: user._id, fullName: user.fullName, email } }
 }
 
@@ -47,4 +74,33 @@ const checkPincode = async (pincode) => {
   return { district }
 }
 
-module.exports = { registerUser, loginUser, getProducts, checkPincode }
+const refreshAccessToken = async (refreshTokenValue) => {
+  const refreshToken = await RefreshToken.findOne({ 
+    token: refreshTokenValue, 
+    isRevoked: false,
+    expiresAt: { $gt: new Date() }
+  })
+  
+  if (!refreshToken) {
+    throw new Error('Invalid or expired refresh token')
+  }
+  
+  const accessToken = jwt.sign(
+    { userId: refreshToken.userId },
+    process.env.JWT_SECRET_KEY,
+    { expiresIn: '15m' }
+  )
+  
+  return { accessToken }
+}
+
+const logoutUser = async (refreshTokenValue) => {
+  if (refreshTokenValue) {
+    await RefreshToken.findOneAndUpdate(
+      { token: refreshTokenValue },
+      { isRevoked: true }
+    )
+  }
+}
+
+module.exports = { registerUser, loginUser, getProducts, checkPincode, refreshAccessToken, logoutUser }

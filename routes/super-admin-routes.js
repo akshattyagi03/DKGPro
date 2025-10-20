@@ -7,7 +7,8 @@ const {
   rejectAdmin, 
   getAllProducts, 
   editProduct, 
-  deleteProduct 
+  deleteProduct,
+  logoutSuperAdmin
 } = require('../services/super-admin-services')
 const { isSuperAdmin } = require('../middleware/auth')
 const router = express.Router()
@@ -87,9 +88,17 @@ router.delete("/delete-product/:productId", isSuperAdmin, async (req, res) => {
   }
 })
 
-router.get("/logout", isSuperAdmin, (req, res) => {
-  res.clearCookie('token')
-  res.status(200).json({ message: 'Logged out successfully' })
+router.get("/logout", isSuperAdmin, async (req, res) => {
+  try {
+    const refreshToken = req.cookies.superAdminRefreshToken
+    await logoutSuperAdmin(refreshToken)
+    
+    res.clearCookie('superAdminAccessToken')
+    res.clearCookie('superAdminRefreshToken')
+    res.status(200).json({ message: 'Logged out successfully' })
+  } catch (error) {
+    res.status(500).json({ message: error.message })
+  }
 })
 
 module.exports = router

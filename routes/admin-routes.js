@@ -11,7 +11,8 @@ const {
   addThirdCategory, 
   getBlogs, 
   editBlog, 
-  deleteBlog 
+  deleteBlog,
+  logoutAdmin
 } = require('../services/admin-services')
 const { isLoggedIn, isAdmin } = require('../middleware/auth')
 const router = express.Router()
@@ -129,9 +130,17 @@ router.delete("/delete-blog/:blogId", isAdmin, async (req, res) => {
   }
 })
 
-router.get("/logout", isLoggedIn, (req, res)=>{
-    res.clearCookie('token')
+router.get("/logout", isAdmin, async (req, res)=>{
+  try {
+    const refreshToken = req.cookies.adminRefreshToken
+    await logoutAdmin(refreshToken)
+    
+    res.clearCookie('adminAccessToken')
+    res.clearCookie('adminRefreshToken')
     res.status(200).json({message: "You are logged out."})
+  } catch (error) {
+    res.status(500).json({ message: error.message })
+  }
 })
 
 module.exports = router

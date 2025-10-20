@@ -1,5 +1,25 @@
 const Admin = require('../models/admin-model')
+const RefreshToken = require('../models/refresh-token-model')
 const jwt = require('jsonwebtoken')
+
+const generateAdminTokens = async (adminId) => {
+  const accessToken = jwt.sign(
+    { adminId },
+    process.env.JWT_SECRET_KEY,
+    { expiresIn: '15m' }
+  )
+  
+  const refreshTokenValue = require('crypto').randomBytes(64).toString('hex')
+  const refreshToken = new RefreshToken({
+    token: refreshTokenValue,
+    userId: adminId,
+    userType: 'Admin',
+    expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+  })
+  
+  await refreshToken.save()
+  return { accessToken, refreshToken: refreshTokenValue }
+}
 
 const registerAdmin = async (adminData, res) => {
   const { fullName, email, password } = adminData
@@ -23,8 +43,11 @@ const loginAdmin = async (adminData, res) => {
     throw new Error('Admin account pending approval from super admin')
   }
 
-  const token = jwt.sign({ adminId: admin._id }, process.env.JWT_SECRET_KEY)
-  res.cookie('adminToken', token, { httpOnly: true, secure: false })
+  const { accessToken, refreshToken } = await generateAdminTokens(admin._id)
+  
+  res.cookie('adminAccessToken', accessToken, { httpOnly: true, secure: false, maxAge: 15 * 60 * 1000 })
+  res.cookie('adminRefreshToken', refreshToken, { httpOnly: true, secure: false, maxAge: 7 * 24 * 60 * 60 * 1000 })
+  
   return { admin: { id: admin._id, fullName: admin.fullName, email } }
 }
 
@@ -181,6 +204,36 @@ const deleteBlog = async (blogId, adminId) => {
   return blog
 }
 
+const refreshAdminAccessToken = async (refreshTokenValue) => {
+  const refreshToken = await RefreshToken.findOne({ 
+    token: refreshTokenValue, 
+    userType: 'Admin',
+    isRevoked: false,
+    expiresAt: { $gt: new Date() }
+  })
+  
+  if (!refreshToken) {
+    throw new Error('Invalid or expired refresh token')
+  }
+  
+  const accessToken = jwt.sign(
+    { adminId: refreshToken.userId },
+    process.env.JWT_SECRET_KEY,
+    { expiresIn: '15m' }
+  )
+  
+  return { accessToken }
+}
+
+const logoutAdmin = async (refreshTokenValue) => {
+  if (refreshTokenValue) {
+    await RefreshToken.findOneAndUpdate(
+      { token: refreshTokenValue, userType: 'Admin' },
+      { isRevoked: true }
+    )
+  }
+}
+
 module.exports = { 
   registerAdmin, 
   loginAdmin, 
@@ -193,5 +246,7 @@ module.exports = {
   addThirdCategory, 
   getBlogs, 
   editBlog, 
-  deleteBlog 
+  deleteBlog,
+  refreshAdminAccessToken,
+  logoutAdmin
 }

@@ -1,5 +1,25 @@
 const SuperAdmin = require('../models/super-admin-model')
+const RefreshToken = require('../models/refresh-token-model')
 const jwt = require('jsonwebtoken')
+
+const generateSuperAdminTokens = async (superAdminId) => {
+  const accessToken = jwt.sign(
+    { superAdminId },
+    process.env.JWT_SECRET_KEY,
+    { expiresIn: '15m' }
+  )
+  
+  const refreshTokenValue = require('crypto').randomBytes(64).toString('hex')
+  const refreshToken = new RefreshToken({
+    token: refreshTokenValue,
+    userId: superAdminId,
+    userType: 'SuperAdmin',
+    expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+  })
+  
+  await refreshToken.save()
+  return { accessToken, refreshToken: refreshTokenValue }
+}
 
 const registerSuperAdmin = async (superAdminData, res) => {
   const { fullName, email, password } = superAdminData
@@ -11,8 +31,11 @@ const registerSuperAdmin = async (superAdminData, res) => {
   const superAdmin = new SuperAdmin({ fullName, email, password })
   await superAdmin.save()
 
-  const token = jwt.sign({ superAdminId: superAdmin._id }, process.env.JWT_SECRET_KEY)
-  res.cookie('superAdminToken', token, { httpOnly: true, secure: false })
+  const { accessToken, refreshToken } = await generateSuperAdminTokens(superAdmin._id)
+  
+  res.cookie('superAdminAccessToken', accessToken, { httpOnly: true, secure: false, maxAge: 15 * 60 * 1000 })
+  res.cookie('superAdminRefreshToken', refreshToken, { httpOnly: true, secure: false, maxAge: 7 * 24 * 60 * 60 * 1000 })
+  
   return { superAdmin: { id: superAdmin._id, fullName, email } }
 }
 
@@ -24,8 +47,11 @@ const loginSuperAdmin = async (superAdminData, res) => {
     throw new Error('Invalid credentials')
   }
 
-  const token = jwt.sign({ superAdminId: superAdmin._id }, process.env.JWT_SECRET_KEY)
-  res.cookie('superAdminToken', token, { httpOnly: true, secure: false })
+  const { accessToken, refreshToken } = await generateSuperAdminTokens(superAdmin._id)
+  
+  res.cookie('superAdminAccessToken', accessToken, { httpOnly: true, secure: false, maxAge: 15 * 60 * 1000 })
+  res.cookie('superAdminRefreshToken', refreshToken, { httpOnly: true, secure: false, maxAge: 7 * 24 * 60 * 60 * 1000 })
+  
   return { superAdmin: { id: superAdmin._id, fullName: superAdmin.fullName, email } }
 }
 
@@ -100,6 +126,36 @@ const deleteProduct = async (productId) => {
   return product
 }
 
+const refreshSuperAdminAccessToken = async (refreshTokenValue) => {
+  const refreshToken = await RefreshToken.findOne({ 
+    token: refreshTokenValue, 
+    userType: 'SuperAdmin',
+    isRevoked: false,
+    expiresAt: { $gt: new Date() }
+  })
+  
+  if (!refreshToken) {
+    throw new Error('Invalid or expired refresh token')
+  }
+  
+  const accessToken = jwt.sign(
+    { superAdminId: refreshToken.userId },
+    process.env.JWT_SECRET_KEY,
+    { expiresIn: '15m' }
+  )
+  
+  return { accessToken }
+}
+
+const logoutSuperAdmin = async (refreshTokenValue) => {
+  if (refreshTokenValue) {
+    await RefreshToken.findOneAndUpdate(
+      { token: refreshTokenValue, userType: 'SuperAdmin' },
+      { isRevoked: true }
+    )
+  }
+}
+
 module.exports = { 
   registerSuperAdmin, 
   loginSuperAdmin, 
@@ -108,5 +164,7 @@ module.exports = {
   rejectAdmin, 
   getAllProducts, 
   editProduct, 
-  deleteProduct 
+  deleteProduct,
+  refreshSuperAdminAccessToken,
+  logoutSuperAdmin
 }
