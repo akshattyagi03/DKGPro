@@ -41,13 +41,15 @@ PORT=6969
 3. `npm start` or `npm run dev`
 
 ## Authentication notes
-- Uses **cookie-based JWT authentication**
+- Uses **cookie-based JWT authentication with access/refresh tokens**
 - Different cookies for different roles:
-  - `token` — user authentication
-  - `adminToken` — admin authentication  
-  - `superAdminToken` — super admin authentication
-- Middleware verifies cookies and attaches user/admin/superAdmin to req object
+  - `accessToken` + `refreshToken` — user authentication
+  - `adminAccessToken` + `adminRefreshToken` — admin authentication  
+  - `superAdminAccessToken` + `superAdminRefreshToken` — super admin authentication
+- Access tokens expire in 15 minutes, refresh tokens in 7 days
+- Middleware automatically refreshes expired access tokens using refresh tokens
 - Admin accounts require super-admin approval before login
+- Super admin registration restricted to development environment only
 
 ---
 
@@ -76,7 +78,7 @@ Base URL: `/users`
   "phoneNumber": "+1234567890"
 }
 ```
-- **Success:** 201 Created + sets `token` cookie
+- **Success:** 201 Created + sets `accessToken` and `refreshToken` cookies
 
 ### 2. Login User
 - **Method:** POST
@@ -90,7 +92,7 @@ Base URL: `/users`
   "password": "secret123"
 }
 ```
-- **Success:** 200 OK + sets `token` cookie
+- **Success:** 200 OK + sets `accessToken` and `refreshToken` cookies
 
 ### 3. Get Products (Home)
 - **Method:** GET
@@ -134,7 +136,7 @@ Base URL: `/admins`
   "password": "secure123"
 }
 ```
-- **Success:** 201 Created (pending approval message)
+- **Success:** 201 Created (pending approval message, no cookies set)
 
 #### 2. Login Admin
 - **Method:** POST
@@ -148,7 +150,7 @@ Base URL: `/admins`
   "password": "secure123"
 }
 ```
-- **Success:** 200 OK + sets `adminToken` cookie
+- **Success:** 200 OK + sets `adminAccessToken` and `adminRefreshToken` cookies
 
 ### Admin Dashboard
 
