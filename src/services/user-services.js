@@ -94,6 +94,28 @@ const refreshAccessToken = async (refreshTokenValue) => {
   return { accessToken }
 }
 
+const getProductsByCity = async (city) => {
+  const Product = require('../models/product-model')
+  const products = await Product.find({
+    'serviceableAreas.city': { $regex: city, $options: 'i' }
+  }).populate('mainCategory subCategory thirdCategory')
+  
+  const categories = {}
+  products.forEach(product => {
+    const main = product.mainCategory.name
+    const sub = product.subCategory.name
+    const third = product.thirdCategory.name
+    
+    if (!categories[main]) categories[main] = {}
+    if (!categories[main][sub]) categories[main][sub] = []
+    if (!categories[main][sub].includes(third)) {
+      categories[main][sub].push(third)
+    }
+  })
+  
+  return { products, availableCategories: categories }
+}
+
 const logoutUser = async (refreshTokenValue) => {
   if (refreshTokenValue) {
     await RefreshToken.findOneAndUpdate(
@@ -103,4 +125,4 @@ const logoutUser = async (refreshTokenValue) => {
   }
 }
 
-module.exports = { registerUser, loginUser, getProducts, checkPincode, refreshAccessToken, logoutUser }
+module.exports = { registerUser, loginUser, getProducts, checkPincode, getProductsByCity, refreshAccessToken, logoutUser }

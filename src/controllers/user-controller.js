@@ -3,6 +3,7 @@ const {
   loginUser, 
   getProducts, 
   checkPincode, 
+  getProductsByCity,
   logoutUser 
 } = require('../services/user-services')
 const { HTTP_STATUS } = require('../utils/constants')
@@ -43,6 +44,16 @@ const checkPincodeDistrict = async (req, res) => {
   }
 }
 
+const getProductsByCityController = async (req, res) => {
+  try {
+    const { city } = req.params
+    const result = await getProductsByCity(city)
+    res.json(result)
+  } catch (error) {
+    res.status(HTTP_STATUS.BAD_REQUEST).json({ message: error.message })
+  }
+}
+
 const logout = async (req, res) => {
   try {
     const refreshToken = req.cookies.refreshToken
@@ -61,5 +72,6 @@ module.exports = {
   login,
   home,
   checkPincodeDistrict,
+  getProductsByCity: getProductsByCityController,
   logout
 }

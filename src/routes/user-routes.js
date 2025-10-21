@@ -7,6 +7,7 @@ router.post('/register', userController.register)
 router.post('/login', userController.login)
 router.get('/home', userController.home)
 router.get('/check/:pincode', userController.checkPincodeDistrict)
+router.get('/products/:city', userController.getProductsByCity)
 router.get('/logout', isLoggedIn, userController.logout)
 
 module.exports = router
